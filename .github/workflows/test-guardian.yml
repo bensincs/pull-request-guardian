@@ -4,6 +4,12 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
 
+# allow the
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   validate-pr:
     name: Validate PR
@@ -16,4 +22,4 @@ jobs:
       - name: Run Pull Request Guardian
         uses: ./. # ← This means: use the action in this repo's root
         with:
-          github_token: "${{ secrets.GITHUB_TOKEN }}"
+          github_token: '${{ secrets.GITHUB_TOKEN }}'
