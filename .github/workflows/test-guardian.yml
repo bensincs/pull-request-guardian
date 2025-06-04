@@ -13,5 +13,14 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # This is needed to replicate the stuff installed when someone uses this on an external repo
+      - name: Install runtime deps
+        run: yarn add @actions/core @actions/github
+
       - name: Run Pull Request Guardian
         uses: ./. # ← This means: use the action in this repo's root
