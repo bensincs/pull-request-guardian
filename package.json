@@ -1,6 +1,5 @@
 {
   "name": "pull-request-guardian",
-  "type": "module",
   "packageManager": "yarn@4.6.0",
   "dependencies": {
     "@actions/core": "^1.11.1",
