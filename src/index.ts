@@ -1,29 +1,41 @@
 import * as github from '@actions/github';
-import { failIfErrors, logError } from './log';
-import { validateBranch } from './validators/branch';
-import { validateTitle } from './validators/title';
-import { validatePrefixMatch } from './validators/prefix';
-import { validateBody } from './validators/description';
+import { logError } from './log';
+import { getInput, setFailed } from '@actions/core';
+import PullRequestHelper from './service';
+import { PullRequestValidator } from './validator';
 
-function run(): void {
+async function run(): Promise<void> {
+  const token = getInput('github_token', { required: true });
   const pr = github.context.payload.pull_request;
+  const repo = github.context.repo;
   if (!pr) {
-    logError('This action must be triggered by a pull_request event.');
-    failIfErrors();
+    const errorMessage = 'This action must be triggered by a pull_request event.';
+    logError(errorMessage);
+    setFailed(errorMessage);
+    return;
+  }
+  if (!repo.owner || !repo.repo) {
+    const errorMessage = 'Repository owner or name is missing in the context.';
+    logError(errorMessage);
+    setFailed(errorMessage);
     return;
   }
 
-  const branch = github.context.ref.replace('refs/heads/', '');
-  const title = pr.title;
-  const body = pr.body;
+  // HAPPY TO START THE JOB NOW :)
 
-  const branchType = validateBranch(branch);
-  const titleType = validateTitle(title);
+  const helper = new PullRequestHelper(token, repo.owner, repo.repo, pr.number);
 
-  validatePrefixMatch(branchType, titleType);
-  validateBody(body);
+  const validator = new PullRequestValidator(pr);
+  validator.validateBranch();
+  validator.validateTitle();
+  validator.validateBody();
 
-  failIfErrors();
+  if (validator.getErrors().length > 0) {
+    const errorMessage = `Validation failed with the following errors:\n${validator.getErrors().join('\n')}`;
+    helper.commentOnPR(errorMessage);
+    setFailed(errorMessage);
+    return;
+  }
 }
 
-run();
+await run();
