@@ -51,9 +51,9 @@ function logError(message) {
 }
 function failIfErrors() {
     if (errors.length > 0) {
-        core.setFailed(`Pull Request Guardian found ${errors.length} issue(s):\n- ${errors.join('\n- ')}`);
+        core.setFailed(`🛡️ Pull Request Guardian found ${errors.length} issue(s):\n- ${errors.join('\n- ')}`);
     }
     else {
-        logPass('Pull Request passed all guardian checks!');
+        logPass('🚀 Pull Request passed all guardian checks!');
     }
 }

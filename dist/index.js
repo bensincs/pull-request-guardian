@@ -35,48 +35,10 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const github = __importStar(require("@actions/github"));
 const log_1 = require("./log");
-const BRANCH_REGEX = /^((feat|fix|docs|style|refactor|perf|test|chore)(\/[a-z0-9-]+)?)$/;
-const TITLE_REGEX = /^(feat|fix|docs|style|refactor|perf|test|chore)(\([a-z0-9-]+\))?: [A-Z].{1,50}$/;
-function validateBranch(branch) {
-    (0, log_1.logCheck)('Validating branch name', branch);
-    const match = branch.match(BRANCH_REGEX);
-    if (!match) {
-        (0, log_1.logError)(`Branch name "${branch}" is invalid. Must match: ${BRANCH_REGEX}`);
-        return null;
-    }
-    (0, log_1.logPass)(`Branch name "${branch}" is valid.`);
-    return match[2]; // e.g. 'feat'
-}
-function validateTitle(title) {
-    (0, log_1.logCheck)('Validating PR title', title);
-    const match = title.match(TITLE_REGEX);
-    if (!match) {
-        (0, log_1.logError)(`PR title "${title}" is invalid. Must match: ${TITLE_REGEX}`);
-        return null;
-    }
-    (0, log_1.logPass)(`PR title "${title}" is valid.`);
-    return match[1]; // e.g. 'feat'
-}
-function validatePrefixMatch(branchType, titleType) {
-    if (!branchType || !titleType)
-        return;
-    (0, log_1.logCheck)('Matching prefix', `branch="${branchType}", title="${titleType}"`);
-    if (branchType !== titleType) {
-        (0, log_1.logError)(`Prefix mismatch: branch="${branchType}" vs title="${titleType}"`);
-    }
-    else {
-        (0, log_1.logPass)(`Prefix match: both branch and title are "${branchType}"`);
-    }
-}
-function validateBody(body) {
-    (0, log_1.logCheck)('Validating PR description');
-    if (!body || body.trim() === '') {
-        (0, log_1.logError)('PR description (body) is required and cannot be empty.');
-    }
-    else {
-        (0, log_1.logPass)('PR description is provided.');
-    }
-}
+const branch_1 = require("./validators/branch");
+const title_1 = require("./validators/title");
+const prefix_1 = require("./validators/prefix");
+const description_1 = require("./validators/description");
 function run() {
     const pr = github.context.payload.pull_request;
     if (!pr) {
@@ -87,10 +49,10 @@ function run() {
     const branch = github.context.ref.replace('refs/heads/', '');
     const title = pr.title;
     const body = pr.body;
-    const branchType = validateBranch(branch);
-    const titleType = validateTitle(title);
-    validatePrefixMatch(branchType, titleType);
-    validateBody(body);
+    const branchType = (0, branch_1.validateBranch)(branch);
+    const titleType = (0, title_1.validateTitle)(title);
+    (0, prefix_1.validatePrefixMatch)(branchType, titleType);
+    (0, description_1.validateBody)(body);
     (0, log_1.failIfErrors)();
 }
 run();
