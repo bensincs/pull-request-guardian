@@ -15,3 +15,5 @@ jobs:
 
       - name: Run Pull Request Guardian
         uses: ./. # ← This means: use the action in this repo's root
+        with:
+          github_token: "${{ secrets.GITHUB_TOKEN }}"

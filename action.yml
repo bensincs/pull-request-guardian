@@ -2,8 +2,11 @@ name: Pull Request Guardian
 description: Enforces Conventional Commit-based branch names, PR titles, and non-empty descriptions
 author: Ben Sinclair (ben@sincs.co.uk)
 
-inputs: {}
-
 runs:
   using: node16
   main: dist/index.js
+
+inputs:
+  github_token:
+    required: true
+    description: GitHub token for API access

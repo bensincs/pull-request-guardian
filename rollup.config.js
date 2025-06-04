@@ -7,6 +7,8 @@ export default {
   output: {
     file: 'dist/index.js',
     format: 'esm',
+    sourcemap: true,
+    inlineDynamicImports: true,
   },
   plugins: [
     resolve(),
