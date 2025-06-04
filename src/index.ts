@@ -1,43 +1,41 @@
 import * as github from '@actions/github';
-import { failIfErrors, logError } from './log';
-import { validateBranch } from './validators/branch';
-import { context } from '@actions/github';
-import { getInput } from '@actions/core';
-import { validateTitle } from './validators/title';
-import { validatePrefixMatch } from './validators/prefix';
-import { validateBody } from './validators/description';
-import { Octokit } from '@octokit/rest';
-import fetch from 'node-fetch';
-
-const token = getInput('github_token', { required: true });
-const octokit = new Octokit({ auth: token, request: { fetch: fetch } });
+import { logError } from './log';
+import { getInput, setFailed } from '@actions/core';
+import PullRequestHelper from './service';
+import { PullRequestValidator } from './validator';
 
 async function run(): Promise<void> {
+  const token = getInput('github_token', { required: true });
   const pr = github.context.payload.pull_request;
+  const repo = github.context.repo;
   if (!pr) {
-    logError('This action must be triggered by a pull_request event.');
-    failIfErrors();
+    const errorMessage = 'This action must be triggered by a pull_request event.';
+    logError(errorMessage);
+    setFailed(errorMessage);
+    return;
+  }
+  if (!repo.owner || !repo.repo) {
+    const errorMessage = 'Repository owner or name is missing in the context.';
+    logError(errorMessage);
+    setFailed(errorMessage);
     return;
   }
 
-  await octokit.issues.createComment({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    issue_number: pr.number,
-    body: 'Thanks for your PR! 🚀',
-  });
+  // HAPPY TO START THE JOB NOW :)
 
-  const branch = github.context.payload.pull_request?.head.ref;
-  const title = pr.title;
-  const body = pr.body;
+  const helper = new PullRequestHelper(token, repo.owner, repo.repo, pr.number);
 
-  const branchType = validateBranch(branch);
-  const titleType = validateTitle(title);
+  const validator = new PullRequestValidator(pr);
+  validator.validateBranch();
+  validator.validateTitle();
+  validator.validateBody();
 
-  validatePrefixMatch(branchType, titleType);
-  validateBody(body);
-
-  failIfErrors();
+  if (validator.getErrors().length > 0) {
+    const errorMessage = `Validation failed with the following errors:\n${validator.getErrors().join('\n')}`;
+    helper.commentOnPR(errorMessage);
+    setFailed(errorMessage);
+    return;
+  }
 }
 
 await run();

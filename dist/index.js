@@ -598,11 +598,11 @@ function requireSymbols$4 () {
 	return symbols$4;
 }
 
-var errors$1;
+var errors;
 var hasRequiredErrors;
 
 function requireErrors () {
-	if (hasRequiredErrors) return errors$1;
+	if (hasRequiredErrors) return errors;
 	hasRequiredErrors = 1;
 
 	class UndiciError extends Error {
@@ -811,7 +811,7 @@ function requireErrors () {
 	  }
 	}
 
-	errors$1 = {
+	errors = {
 	  HTTPParserError,
 	  UndiciError,
 	  HeadersTimeoutError,
@@ -833,7 +833,7 @@ function requireErrors () {
 	  ResponseExceededMaxSizeError,
 	  RequestRetryError
 	};
-	return errors$1;
+	return errors;
 }
 
 var constants$4;
@@ -31238,7 +31238,6 @@ function requireCore () {
 
 var coreExports = requireCore();
 
-const errors = [];
 function logCheck(label, value) {
     coreExports.info(`🔍 ${label}${value ? `: ${value}` : ''}`);
 }
@@ -31246,60 +31245,7 @@ function logPass(message) {
     coreExports.info(`✅ ${message}`);
 }
 function logError(message) {
-    errors.push(message);
     coreExports.error(`❌ ${message}`);
-}
-function failIfErrors() {
-    if (errors.length > 0) {
-        coreExports.setFailed(`🛡️ Pull Request Guardian found ${errors.length} issue(s):\n- ${errors.join('\n- ')}`);
-    }
-    else {
-        logPass('🚀 Pull Request passed all guardian checks!');
-    }
-}
-
-const BRANCH_REGEX = /^((feat|fix|docs|style|refactor|perf|test|chore)(\/[a-z0-9-]+)?)$/;
-function validateBranch(branch) {
-    logCheck('Validating branch name', branch);
-    const match = branch.match(BRANCH_REGEX);
-    if (!match) {
-        logError(`Branch name "${branch}" is invalid. Must match: ${BRANCH_REGEX}`);
-        return null;
-    }
-    logPass(`Branch name "${branch}" is valid.`);
-    return match[2]; // e.g. 'feat'
-}
-
-const TITLE_REGEX = /^(feat|fix|docs|style|refactor|perf|test|chore)(\([a-z0-9-]+\))?: .{1,50}$/;
-function validateTitle(title) {
-    logCheck('Validating PR title', title);
-    const match = title.match(TITLE_REGEX);
-    if (!match) {
-        logError(`PR title "${title}" is invalid. Must match: ${TITLE_REGEX}`);
-        return null;
-    }
-    logPass(`PR title "${title}" is valid.`);
-    return match[1]; // e.g. 'feat'
-}
-
-function validatePrefixMatch(branchType, titleType) {
-    logCheck('Matching prefix', `branch="${branchType}", title="${titleType}"`);
-    if (branchType !== titleType) {
-        logError(`Prefix mismatch: branch="${branchType}" vs title="${titleType}"`);
-    }
-    else {
-        logPass(`Prefix match: both branch and title are "${branchType}"`);
-    }
-}
-
-function validateBody(body) {
-    logCheck('Validating PR description');
-    if (!body || body.trim() === '') {
-        logError('PR description (body) is required and cannot be empty.');
-    }
-    else {
-        logPass('PR description is provided.');
-    }
 }
 
 function getUserAgent() {
@@ -42083,29 +42029,120 @@ function fixResponseChunkedTransferBadEnding(request, errorCallback) {
 	});
 }
 
-const token = coreExports.getInput('github_token', { required: true });
-const octokit = new Octokit({ auth: token, request: { fetch: fetch } });
+class GithubService {
+    octokit;
+    owner;
+    repo;
+    pr_number;
+    constructor(token, owner, repo, pr_number) {
+        this.octokit = new Octokit({ auth: token, request: { fetch } });
+        this.owner = owner;
+        this.repo = repo;
+        this.pr_number = pr_number;
+    }
+    async commentOnPR(message) {
+        await this.octokit.issues.createComment({
+            owner: this.owner,
+            repo: this.repo,
+            issue_number: this.pr_number,
+            body: message,
+        });
+    }
+}
+
+class PullRequestValidator {
+    errors = [];
+    pullRequest;
+    constructor(pullRequest) {
+        this.pullRequest = pullRequest;
+        if (!pullRequest) {
+            this.addError('Pull request data is missing.');
+        }
+    }
+    addError(message) {
+        this.errors.push(message);
+        logError(message);
+    }
+    getErrors() {
+        return this.errors;
+    }
+    validateBranch() {
+        if (!this.pullRequest)
+            return null;
+        const BRANCH_REGEX = /^((feat|fix|docs|style|refactor|perf|test|chore)(\/[a-z0-9-]+)?)$/;
+        const branch = this.pullRequest.head?.ref;
+        if (!branch) {
+            this.addError('Branch name is missing.');
+            return null;
+        }
+        logCheck('Validating branch name', branch);
+        const match = branch.match(BRANCH_REGEX);
+        if (!match) {
+            this.addError(`Branch name "${branch}" is invalid. Must match: ${BRANCH_REGEX}`);
+            return null;
+        }
+        logPass(`Branch name "${branch}" is valid.`);
+        return match[2];
+    }
+    validateTitle() {
+        if (!this.pullRequest)
+            return null;
+        const TITLE_REGEX = /^(feat|fix|docs|style|refactor|perf|test|chore)(\([a-z0-9-]+\))?: .{1,50}$/;
+        const title = this.pullRequest.title;
+        if (!title) {
+            this.addError('PR title is missing.');
+            return null;
+        }
+        logCheck('Validating PR title', title);
+        const match = title.match(TITLE_REGEX);
+        if (!match) {
+            this.addError(`PR title "${title}" is invalid. Must match: ${TITLE_REGEX}`);
+            return null;
+        }
+        logPass(`PR title "${title}" is valid.`);
+        return match[1];
+    }
+    validateBody() {
+        if (!this.pullRequest)
+            return;
+        const body = this.pullRequest.body;
+        logCheck('Validating PR description');
+        if (!body || body.trim() === '') {
+            this.addError('PR description (body) is required and cannot be empty.');
+            return;
+        }
+        logPass('PR description is provided.');
+    }
+}
+
 async function run() {
+    const token = coreExports.getInput('github_token', { required: true });
     const pr = githubExports.context.payload.pull_request;
+    const repo = githubExports.context.repo;
     if (!pr) {
-        logError('This action must be triggered by a pull_request event.');
-        failIfErrors();
+        const errorMessage = 'This action must be triggered by a pull_request event.';
+        logError(errorMessage);
+        coreExports.setFailed(errorMessage);
         return;
     }
-    await octokit.issues.createComment({
-        owner: githubExports.context.repo.owner,
-        repo: githubExports.context.repo.repo,
-        issue_number: pr.number,
-        body: 'Thanks for your PR! 🚀',
-    });
-    const branch = githubExports.context.payload.pull_request?.head.ref;
-    const title = pr.title;
-    const body = pr.body;
-    const branchType = validateBranch(branch);
-    const titleType = validateTitle(title);
-    validatePrefixMatch(branchType, titleType);
-    validateBody(body);
-    failIfErrors();
+    if (!repo.owner || !repo.repo) {
+        const errorMessage = 'Repository owner or name is missing in the context.';
+        logError(errorMessage);
+        coreExports.setFailed(errorMessage);
+        return;
+    }
+    // HAPPY TO START THE JOB NOW :)
+    const helper = new GithubService(token, repo.owner, repo.repo, pr.number);
+    const validator = new PullRequestValidator(pr);
+    validator.validateBranch();
+    validator.validateTitle();
+    validator.validateBody();
+    if (validator.getErrors().length > 0) {
+        const errorMessage = `Validation failed with the following errors:\n${validator.getErrors().join('\n')}`;
+        helper.commentOnPR(errorMessage);
+        coreExports.setFailed(errorMessage);
+        return;
+    }
 }
 await run();
 
