@@ -1,0 +1,17 @@
+name: 🛡️ Test Pull Request Guardian
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  validate-pr:
+    name: Validate PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run Pull Request Guardian
+        uses: ./. # ← This means: use the action in this repo's root

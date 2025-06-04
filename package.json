@@ -1,4 +1,26 @@
 {
   "name": "pull-request-guardian",
-  "packageManager": "yarn@4.6.0"
+  "type": "module",
+  "packageManager": "yarn@4.6.0",
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "@types/node": "^22.15.29",
+    "@typescript-eslint/eslint-plugin": "^8.33.1",
+    "@typescript-eslint/parser": "^8.33.1",
+    "eslint": "^9.28.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.1",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.1"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write src"
+  }
 }
