@@ -1,7 +1,6 @@
 import { logCheck, logError, logPass } from '../log';
 
-const TITLE_REGEX =
-  /^(feat|fix|docs|style|refactor|perf|test|chore)(\([a-z0-9-]+\))?: [A-Z].{1,50}$/;
+const TITLE_REGEX = /^(feat|fix|docs|style|refactor|perf|test|chore)(\([a-z0-9-]+\))?: .{1,50}$/;
 
 export function validateTitle(title: string): string | null {
   logCheck('Validating PR title', title);

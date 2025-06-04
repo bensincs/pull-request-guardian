@@ -15,5 +15,4 @@ export default {
       tsconfig: './tsconfig.json',
     }),
   ],
-  external: ['@actions/core', '@actions/github'],
 };

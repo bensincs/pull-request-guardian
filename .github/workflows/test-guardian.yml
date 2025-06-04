@@ -13,20 +13,5 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Use Yarn 4.6.0
-        run: corepack prepare yarn@4.6.0 --activate
-
-      # This is needed to replicate the stuff installed when someone uses this on an external repo
-      - name: Install runtime deps
-        run: yarn install --frozen-lockfile
-
       - name: Run Pull Request Guardian
         uses: ./. # ← This means: use the action in this repo's root

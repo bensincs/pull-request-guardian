@@ -1,7 +1,6 @@
 import { logCheck, logError, logPass } from '../log';
 
 export function validatePrefixMatch(branchType: string | null, titleType: string | null): void {
-  if (!branchType || !titleType) return;
   logCheck('Matching prefix', `branch="${branchType}", title="${titleType}"`);
   if (branchType !== titleType) {
     logError(`Prefix mismatch: branch="${branchType}" vs title="${titleType}"`);

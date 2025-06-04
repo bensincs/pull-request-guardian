@@ -13,7 +13,7 @@ function run(): void {
     return;
   }
 
-  const branch = github.context.ref.replace('refs/heads/', '');
+  const branch = github.context.payload.pull_request?.head.ref;
   const title = pr.title;
   const body = pr.body;
 
